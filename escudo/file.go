@@ -6,21 +6,18 @@ import (
 	"os"
 	"path"
 
-	"github.com/rogpeppe/go-internal/lockedfile"
+	"github.com/gofrs/flock"
 )
-
-var LockExt = ".escl"
-var TempExt = ".esct"
 
 type File struct {
 	path string
 	flag int
 	perm fs.FileMode
 
-	orig *os.File         // Original file
-	dir  *os.File         // File directory
-	lock *lockedfile.File // Lock file
-	temp *os.File         // Temporary file
+	orig *os.File     // Original file
+	dir  *os.File     // File directory
+	lock *flock.Flock // Lock file
+	temp *os.File     // Temporary file
 }
 
 func OpenFile(filepath string, flag int, perm fs.FileMode) *File {
@@ -39,33 +36,34 @@ func OpenFile(filepath string, flag int, perm fs.FileMode) *File {
 	return file
 }
 
-func (file *File) ShieldUp() error {
+func (file *File) ShieldUp() (bool, error) {
 	var err error
 
 	// Get original file.
 	file.orig, err = os.OpenFile(file.path, file.flag, file.perm)
 
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	// Get lock file.
 	lockpath := file.lockpath()
+	file.lock = flock.New(lockpath, flock.SetFlag(os.O_RDWR|os.O_CREATE), flock.SetPermissions(0770))
 
 	if (file.flag & (os.O_WRONLY | os.O_RDWR)) == os.O_RDONLY {
-		file.lock, err = lockedfile.OpenFile(lockpath, os.O_RDONLY|os.O_CREATE, 0770)
+		locked, err := file.lock.TryRLock()
 
-		if err != nil {
-			return err
+		if (err != nil) || !locked {
+			return false, err
 		}
 
 		// Return sooner because doesn't need temporary file for shared locks.
-		return nil
+		return true, nil
 	} else {
-		file.lock, err = lockedfile.OpenFile(lockpath, os.O_RDWR|os.O_CREATE, 0770)
+		locked, err := file.lock.TryLock()
 
-		if err != nil {
-			return err
+		if (err != nil) || !locked {
+			return false, err
 		}
 	}
 
@@ -73,7 +71,7 @@ func (file *File) ShieldUp() error {
 	file.dir, err = os.Open(path.Dir(file.path))
 
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	// Get temporary file.
@@ -81,16 +79,16 @@ func (file *File) ShieldUp() error {
 	file.temp, err = os.OpenFile(temppath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0770)
 
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	_, err = io.Copy(file.temp, file.orig)
 
 	if err != nil {
-		return err
+		return false, err
 	}
 
-	return nil
+	return true, nil
 }
 
 func (file *File) Close() error {

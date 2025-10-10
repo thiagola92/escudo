@@ -12,12 +12,19 @@ func main() {
 	escudo.Init("../example")
 
 	file := escudo.OpenFile("../example/myfile.txt", os.O_WRONLY, 0777)
-	err := file.ShieldUp()
+	locked, err := file.ShieldUp()
 
 	if err != nil {
 		println(err.Error())
 		return
 	}
 
+	if !locked {
+		println("Failed to lock")
+		return
+	}
+
 	file.Close()
+
+	println("Success")
 }

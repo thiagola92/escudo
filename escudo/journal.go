@@ -1,9 +1,10 @@
 package escudo
 
 import (
-	"fmt"
 	"os"
 	"path"
+
+	"github.com/gofrs/flock"
 )
 
 const (
@@ -38,33 +39,68 @@ const (
 type Journal struct {
 	path string
 
-	file    *os.File       // TODO: replace by ours File.
-	entries []JournalEntry // TODO: Decide the structure
+	file    *flock.Flock   // TODO: replace by ours File.
+	entries []JournalEntry // TODO: Decide the structure.
 }
 
 type JournalEntry struct {
-	file   File
+	file File
+
 	Path   string
 	Status int
 }
 
-func OpenJournal(journalspath string) (*Journal, error) {
-	var err error
-	var journal *Journal
-
-	pid := os.Getpid()
-	journalname := fmt.Sprintf("%d.escj", pid)
-	journal.path = path.Join(journalspath, journalname)
-
-	journal.file, err = os.OpenFile(journal.path, os.O_RDWR|os.O_CREATE, 0770)
+func OpenJournal(journalpath string) (*Journal, error) {
+	journal := &Journal{path: journalpath}
+	journal.file = flock.New(journalpath, flock.SetFlag(os.O_RDWR|os.O_CREATE), flock.SetPermissions(0770))
+	locked, err := journal.file.TryLock()
 
 	if err != nil {
 		return nil, err
 	}
 
-	return journal, nil
+	if locked {
+		return journal, nil
+	}
+
+	return nil, nil
 }
 
+func AnyJournal(journalspath string) (*Journal, error) {
+	var journal *Journal
+	var err error
+
+	dir, err := os.Open(journalspath)
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer dir.Close()
+
+	files, err := dir.ReadDir(0)
+
+	if err != nil {
+		return nil, err
+	}
+
+	for _, file := range files {
+		journalpath := path.Join(journalspath, file.Name())
+		journal, err = OpenJournal(journalpath)
+
+		if err != nil {
+			return nil, err
+		}
+
+		if journal != nil {
+			return journal, nil
+		}
+	}
+
+	return nil, nil
+}
+
+// TODO: Give a bunch of files and let the journal attempt to open all of them.
 func (journal *Journal) OpenFiles(files []*File) error {
 	return nil
 }

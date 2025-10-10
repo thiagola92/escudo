@@ -5,27 +5,28 @@ import (
 	"path"
 )
 
+var lockext = ".escl"
+var tempext = ".esct"
+var jourext = ".escj"
+
 type Escudo struct {
-	escudopath   string
-	lockpath     string
-	journalspath string
+	path string
 }
 
 func Init(dirpath string) (*Escudo, error) {
 	var err error
-	escudo := &Escudo{}
 
-	escudo.escudopath = path.Join(dirpath, ".escudo")
-	escudo.lockpath = path.Join(escudo.escudopath, "global.escl")
-	escudo.journalspath = path.Join(escudo.escudopath, "journals")
+	escudo := &Escudo{
+		path: path.Join(dirpath, ".escudo"),
+	}
 
-	err = os.Mkdir(escudo.escudopath, 0770)
+	err = os.Mkdir(escudo.path, 0770)
 
 	if err != nil {
 		return nil, err
 	}
 
-	file, err := os.OpenFile(escudo.lockpath, os.O_RDONLY|os.O_CREATE, 0770)
+	file, err := os.OpenFile(escudo.lockpath(), os.O_RDONLY|os.O_CREATE, 0770)
 
 	if err != nil {
 		return nil, err
@@ -37,7 +38,7 @@ func Init(dirpath string) (*Escudo, error) {
 		return nil, err
 	}
 
-	err = os.Mkdir(escudo.journalspath, 0770)
+	err = os.Mkdir(escudo.journalspath(), 0770)
 
 	if err != nil {
 		return nil, err
