@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"os"
 
 	"github.com/thiagola92/escudo/escudo"
@@ -12,19 +13,13 @@ func main() {
 	escudo.Init("../example")
 
 	file := escudo.OpenFile("../example/myfile.txt", os.O_WRONLY, 0777)
-	locked, err := file.ShieldUp()
+	err := file.ShieldUp()
 
 	if err != nil {
-		println(err.Error())
-		return
+		log.Fatal(err.Error())
 	}
 
-	if !locked {
-		println("Failed to lock")
-		return
-	}
+	defer file.Close()
 
-	file.Close()
-
-	println("Success")
+	log.Println("Success")
 }

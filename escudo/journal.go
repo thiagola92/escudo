@@ -4,7 +4,7 @@ import (
 	"os"
 	"path"
 
-	"github.com/gofrs/flock"
+	"github.com/thiagola92/go-lockedfile/lockedfile"
 )
 
 const (
@@ -39,8 +39,8 @@ const (
 type Journal struct {
 	path string
 
-	file    *flock.Flock   // TODO: replace by ours File.
-	entries []JournalEntry // TODO: Decide the structure.
+	file    *lockedfile.File // TODO: replace by ours File.
+	entries []JournalEntry   // TODO: Decide the structure.
 }
 
 type JournalEntry struct {
@@ -51,19 +51,16 @@ type JournalEntry struct {
 }
 
 func OpenJournal(journalpath string) (*Journal, error) {
+	var err error
+
 	journal := &Journal{path: journalpath}
-	journal.file = flock.New(journalpath, flock.SetFlag(os.O_RDWR|os.O_CREATE), flock.SetPermissions(0770))
-	locked, err := journal.file.TryLock()
+	journal.file, err = lockedfile.TryOpenFile(journalpath, os.O_RDWR|os.O_CREATE, 0770)
 
 	if err != nil {
 		return nil, err
 	}
 
-	if locked {
-		return journal, nil
-	}
-
-	return nil, nil
+	return journal, nil
 }
 
 func AnyJournal(journalspath string) (*Journal, error) {
@@ -88,11 +85,7 @@ func AnyJournal(journalspath string) (*Journal, error) {
 		journalpath := path.Join(journalspath, file.Name())
 		journal, err = OpenJournal(journalpath)
 
-		if err != nil {
-			return nil, err
-		}
-
-		if journal != nil {
+		if err == nil {
 			return journal, nil
 		}
 	}
