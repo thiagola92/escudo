@@ -36,7 +36,7 @@ func OpenFile(filepath string, flag int, perm fs.FileMode) *File {
 	return file
 }
 
-func (file *File) ShieldUp() error {
+func (file *File) Lock() error {
 	var err error
 
 	// Get original file.
