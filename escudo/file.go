@@ -99,6 +99,8 @@ func (file *File) Close() error {
 		if err != nil {
 			return err
 		}
+
+		file.orig = nil
 	}
 
 	if file.temp != nil {
@@ -120,12 +122,14 @@ func (file *File) Close() error {
 			return err
 		}
 
+		file.temp = nil
 		err = file.dir.Close()
 
 		if err != nil {
 			return err
 		}
 
+		file.dir = nil
 		err = os.Rename(file.temppath(), file.path)
 
 		if err != nil {
@@ -139,7 +143,41 @@ func (file *File) Close() error {
 		if err != nil {
 			return err
 		}
+
+		file.lock = nil
 	}
 
 	return nil
+}
+
+func (file *File) Seek(offset int64, whence int) (ret int64, err error) {
+	if file.temp == nil {
+		return 0, nil
+	}
+
+	return file.temp.Seek(offset, whence)
+}
+
+func (file *File) Truncate(size int64) error {
+	if file.temp == nil {
+		return nil
+	}
+
+	return file.temp.Truncate(size)
+}
+
+func (file *File) Write(b []byte) (int, error) {
+	if file.temp == nil {
+		return 0, nil
+	}
+
+	return file.temp.Write(b)
+}
+
+func (file *File) WriteString(s string) (int, error) {
+	if file.temp == nil {
+		return 0, nil
+	}
+
+	return file.temp.WriteString(s)
 }

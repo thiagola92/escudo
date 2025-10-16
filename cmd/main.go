@@ -24,8 +24,11 @@ func main() {
 		log.Fatal(err.Error())
 	}
 
-	defer file2.Close()
-	defer file.Close()
+	err = journal.LockFiles(file, file2)
+
+	if err != nil {
+		log.Fatal(err.Error())
+	}
 
 	log.Println("Success")
 }

@@ -1,6 +1,7 @@
 package escudo
 
 import (
+	"errors"
 	"os"
 	"path"
 )
@@ -20,9 +21,10 @@ func Init(dirpath string) (*Shield, error) {
 		path: path.Join(dirpath, ".escudo"),
 	}
 
+	// Setup directories and files.
 	err = os.Mkdir(shield.path, 0770)
 
-	if err != nil {
+	if err != nil && !errors.Is(err, os.ErrExist) {
 		return nil, err
 	}
 
@@ -40,9 +42,18 @@ func Init(dirpath string) (*Shield, error) {
 
 	err = os.Mkdir(shield.journalspath(), 0770)
 
-	if err != nil {
+	if err != nil && !errors.Is(err, os.ErrExist) {
 		return nil, err
 	}
+
+	// Check for incomplete journals and complete them.
+	// journal, err := shield.anyJournal()
+
+	// if err != nil {
+	// 	return nil, err
+	// }
+
+	// println(journal.path)
 
 	return shield, nil
 }
