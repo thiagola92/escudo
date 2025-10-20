@@ -10,10 +10,6 @@ var lockext = ".escl"
 var tempext = ".esct"
 var jourext = ".escj"
 
-type Shield struct {
-	path string
-}
-
 func Init(dirpath string) (*Shield, error) {
 	var err error
 

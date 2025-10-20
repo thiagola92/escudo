@@ -18,7 +18,7 @@ func main() {
 
 	file := escudo.OpenFile("../example/myfile.txt", os.O_RDONLY, 0777)
 	file2 := escudo.OpenFile("../example/other.txt", os.O_RDWR, 0777)
-	journal, err := shield.MyJournal()
+	journal, err := shield.GetJournal()
 
 	if err != nil {
 		log.Fatal(err.Error())

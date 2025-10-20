@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"os"
-	"path"
-	"strings"
 )
 
 type Journal struct {
@@ -14,11 +12,6 @@ type Journal struct {
 	shield *Shield
 
 	Entries []*JournalEntry
-}
-
-func (shield *Shield) MyJournal() (*Journal, error) {
-	journalpath := shield.journalpath(os.Getpid())
-	return shield.openJournal(journalpath)
 }
 
 func (journal *Journal) LockFiles(files ...*File) error {
@@ -46,7 +39,7 @@ func (journal *Journal) LockFiles(files ...*File) error {
 
 		if err != nil {
 			for index >= 0 {
-				entry.file.Close()
+				entry.file.Close(true)
 				entry.Status = INITIALIZING
 				index -= 1
 			}
@@ -130,55 +123,6 @@ func (journal *Journal) Close() error {
 	return journal.remove()
 }
 
-func (shield *Shield) anyJournal() (*Journal, error) {
-	var journal *Journal
-	var err error
-
-	journalspath := shield.journalspath()
-	dir, err := os.Open(journalspath)
-
-	if err != nil {
-		return nil, err
-	}
-
-	defer dir.Close()
-
-	files, err := dir.ReadDir(0)
-
-	if err != nil {
-		return nil, err
-	}
-
-	for _, file := range files {
-		if !strings.HasSuffix(file.Name(), lockext) {
-			continue
-		}
-
-		journalpath := path.Join(journalspath, file.Name())
-		journal, err = shield.openJournal(journalpath)
-
-		if err == nil {
-			return journal, nil
-		}
-	}
-
-	return nil, nil
-}
-
-func (shield *Shield) openJournal(journalpath string) (*Journal, error) {
-	var err error
-
-	journal := &Journal{path: journalpath, shield: shield}
-	journal.file = OpenFile(journalpath, os.O_RDWR|os.O_CREATE, 0770)
-	err = journal.file.Lock()
-
-	if err != nil {
-		return nil, err
-	}
-
-	return journal, nil
-}
-
 func (journal *Journal) save(reopen bool) error {
 	j, err := json.Marshal(journal)
 
@@ -204,7 +148,7 @@ func (journal *Journal) save(reopen bool) error {
 		return err
 	}
 
-	err = journal.file.Close()
+	err = journal.file.Close(true)
 
 	if err != nil {
 		return err
