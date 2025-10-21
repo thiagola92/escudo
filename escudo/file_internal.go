@@ -1,6 +1,7 @@
 package escudo
 
 import (
+	"errors"
 	"io"
 	"os"
 
@@ -28,6 +29,11 @@ func (file *File) close() error {
 		}
 
 		file.temp = nil
+		err = os.Remove(file.temppath())
+
+		if err != nil && !errors.Is(err, os.ErrNotExist) {
+			return err
+		}
 	}
 
 	if file.dir != nil {

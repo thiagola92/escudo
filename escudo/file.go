@@ -19,8 +19,8 @@ type File struct {
 	temp *os.File         // Temporary file
 }
 
-// Replace original file by the temporary file,
-// but you can still use this File for commiting more changes.
+// Replace original file by the temporary file and
+// create another temporary file so you can keep editing.
 func (file *File) Commit() error {
 	var err error
 
