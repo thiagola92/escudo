@@ -2,35 +2,36 @@ package escudo
 
 import (
 	"path/filepath"
+
+	"github.com/thiagola92/escudo/escudo/assert"
 )
 
-func newJournalEntry(file *File) (entry *JournalEntry, err error) {
+func newJournalEntry(file *File) (entry *JournalEntry) {
+	var err error
+
 	// NOTE: We really want absolute path?
 	// This would means that the user can't move the directory...
 	entry.file = file
-	abspath, err := filepath.Abs(file.path)
+	entry.Path, err = filepath.Abs(file.path)
 
-	if err != nil {
-		return nil, err
-	}
+	defer assert.Catch()
+	assert.NoErr(err)
 
-	entry.Path = abspath
-
-	return entry, nil
+	return entry
 }
 
-func newJournalEntries(files []*File) (entries []*JournalEntry, err error) {
+func newJournalEntries(files []*File) (entries []*JournalEntry) {
 	entries = make([]*JournalEntry, len(files))
 
-	for index, file := range files {
-		entry, err := newJournalEntry(file)
+	defer assert.Catch()
 
-		if err != nil {
-			return nil, err
-		}
+	for index, file := range files {
+		entry := newJournalEntry(file)
+
+		assert.NoErr(assert.Err)
 
 		entries[index] = entry
 	}
 
-	return entries, nil
+	return entries
 }

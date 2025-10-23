@@ -11,48 +11,18 @@ type Journal struct {
 	Status  int
 }
 
-func (journal *Journal) Commit() {
-	defer assert.Catch()
+func (journal *Journal) Lock(files ...*File) (err error) {
+	journal.Entries = newJournalEntries(files)
 
-	lock := journal.shield.getLock()
-
-	defer lock.Close()
-
-	journal.Status = REPLACING
-	journal.commit(true)
-
-	// TODO: Make the actual replacement of files.
-	// Right now I'm just updating the journal.
-
-	journal.Status = WRITING
-	journal.commit(true)
-}
-
-func (journal *Journal) Close(commit bool) {
-	defer assert.Catch()
-
-	lock := journal.shield.getLock()
-
-	defer lock.Close()
-
-	if commit {
-		journal.Status = REPLACING
-		journal.commit(true)
+	if assert.Err != nil {
+		return assert.Err
 	}
 
-	// TODO: Make the actual replacement of files.
-	// Right now I'm just updating the journal.
+	lock := journal.shield.waitLock()
 
-	journal.Status = DELETING
-	journal.commit(false)
-	journal.remove()
-}
-
-func (journal *Journal) LockFiles(files ...*File) {
-	defer assert.Catch()
-
-	journal.Entries = newJournalEntries(files)
-	lock := journal.shield.getLock()
+	if assert.Err != nil {
+		return assert.Err
+	}
 
 	defer lock.Close()
 
@@ -60,16 +30,75 @@ func (journal *Journal) LockFiles(files ...*File) {
 	for index, entry := range journal.Entries {
 		entry.file.Lock()
 
+		// Undo all locks in case one fail.
 		if assert.Err != nil {
 			for index >= 0 {
 				entry.file.Close()
 				index -= 1
 			}
 
-			return
+			return assert.Err
 		}
 	}
 
 	journal.Status = WRITING
-	journal.commit(true)
+	journal.replace()
+
+	return assert.Err
+}
+
+func (journal *Journal) Commit() error {
+	lock := journal.shield.waitLock()
+
+	if assert.Err != nil {
+		return assert.Err
+	}
+
+	defer lock.Close()
+
+	journal.Status = REPLACING
+	journal.replace()
+
+	if assert.Err != nil {
+		return assert.Err
+	}
+
+	// TODO: Make the actual replacement of files.
+	// Right now I'm just updating the journal.
+
+	journal.Status = WRITING
+	journal.replace()
+
+	return assert.Err
+}
+
+func (journal *Journal) Push() error {
+	lock := journal.shield.waitLock()
+
+	if assert.Err != nil {
+		return assert.Err
+	}
+
+	defer lock.Close()
+
+	journal.Status = REPLACING
+	journal.replace()
+
+	if assert.Err != nil {
+		return assert.Err
+	}
+
+	// TODO: Make the actual replacement of files.
+	// Right now I'm just updating the journal.
+
+	journal.Status = DELETING
+	journal.replace()
+
+	if assert.Err != nil {
+		return assert.Err
+	}
+
+	journal.close()
+
+	return assert.Err
 }

@@ -1,10 +1,10 @@
 package escudo
 
 import (
-	"cmp"
 	"io/fs"
 	"os"
 
+	"github.com/thiagola92/escudo/escudo/assert"
 	"github.com/thiagola92/go-lockedfile/lockedfile"
 )
 
@@ -19,53 +19,7 @@ type File struct {
 	temp *os.File         // Temporary file
 }
 
-func (file *File) Commit() (err error) {
-	err = file.commit()
-
-	if err != nil {
-		return err
-	}
-
-	err = file.openOrig()
-
-	if err != nil {
-		return err
-	}
-
-	return file.openTemp()
-}
-
-func (file *File) Push() (err error) {
-	err = file.commit()
-
-	if err != nil {
-		return err
-	}
-
-	return file.close()
-}
-
-func (file *File) Lock() (err error) {
-	shared, err := file.openLock()
-
-	err = cmp.Or(
-		err,
-		file.openOrig(),
-		file.openDir(),
-	)
-
-	if err != nil {
-		return err
-	}
-
-	// Only need temporary file if is an exclusive lock.
-	if !shared {
-		return file.openTemp()
-	}
-
-	return nil
-}
-
+// Setup file to be open in the future.
 func OpenFile(filepath string, flag int, perm fs.FileMode) *File {
 	file := &File{path: filepath}
 
@@ -82,6 +36,66 @@ func OpenFile(filepath string, flag int, perm fs.FileMode) *File {
 	return file
 }
 
+// Obtain permission to interact with file.
+func (file *File) Lock() (err error) {
+	shared := file.openLock()
+
+	if assert.Err != nil {
+		return assert.Err
+	}
+
+	file.openOrig()
+
+	if assert.Err != nil {
+		return assert.Err
+	}
+
+	file.openDir()
+
+	if assert.Err != nil {
+		return assert.Err
+	}
+
+	// Only need temporary file if is an exclusive lock.
+	if !shared {
+		file.openTemp()
+	}
+
+	return assert.Err
+}
+
+// Commit changes to file.
+func (file *File) Commit() error {
+	file.replace()
+
+	if assert.Err != nil {
+		return assert.Err
+	}
+
+	file.openOrig()
+
+	if assert.Err != nil {
+		return assert.Err
+	}
+
+	file.openTemp()
+
+	return assert.Err
+}
+
+// Commit changes to file and close it.
+func (file *File) Push() (err error) {
+	file.replace()
+
+	if assert.Err != nil {
+		return assert.Err
+	}
+
+	file.close()
+
+	return assert.Err
+}
+
 ///////////////////////////////////////////////////////////
 //////////////////////// Wrappers
 ///////////////////////////////////////////////////////////
@@ -89,7 +103,7 @@ func OpenFile(filepath string, flag int, perm fs.FileMode) *File {
 func (file *File) Close() error {
 	file.close()
 
-	return nil
+	return assert.Err
 }
 
 func (file *File) Seek(offset int64, whence int) (ret int64, err error) {

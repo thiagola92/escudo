@@ -7,50 +7,27 @@ import (
 	"github.com/thiagola92/escudo/escudo/assert"
 )
 
-func (journal *Journal) commit() (err error) {
+func (journal *Journal) replace() {
+	var err error
+
 	j, err := json.Marshal(journal)
 
-	if err != nil {
-		return err
-	}
-
-	err = journal.file.Truncate(0)
-
-	if err != nil {
-		return err
-	}
-
-	_, err = journal.file.Seek(0, 0)
-
-	if err != nil {
-		return err
-	}
-
-	_, err = journal.file.WriteString(string(j))
-
-	if err != nil {
-		return err
-	}
-
-	err = journal.file.Close()
-
-	if err != nil {
-		return err
-	}
-
-	journal.file = OpenFile(journal.path, os.O_RDWR|os.O_CREATE, 0770)
-	journal.file.Lock()
-
-	return nil
+	defer assert.Catch()
+	assert.NoErr(err)
+	assert.NoErr(journal.file.Truncate(0))
+	assert.NoErrOn2(journal.file.Seek(0, 0))
+	assert.NoErrOn2(journal.file.WriteString(string(j)))
+	assert.NoErr(journal.file.Commit())
 }
 
-func (journal *Journal) remove() {
+func (journal *Journal) close() {
+	defer assert.Catch()
 	assert.FileNotExist(os.Remove(journal.file.lockpath()))
 	assert.FileNotExist(os.Remove(journal.file.temppath()))
 	assert.FileNotExist(os.Remove(journal.file.path))
 
 	for _, entry := range journal.Entries {
+		assert.NoErr(entry.file.Close())
 		assert.FileNotExist(os.Remove(entry.file.lockpath()))
-		assert.FileNotExist(os.Remove(entry.file.temppath()))
 	}
 }
