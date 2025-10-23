@@ -1,118 +1,75 @@
 package escudo
 
+import "github.com/thiagola92/escudo/escudo/assert"
+
 type Journal struct {
 	path   string
 	file   *File
 	shield *Shield
 
 	Entries []*JournalEntry
+	Status  int
 }
 
-func (journal *Journal) LockFiles(files ...*File) error {
-	var err error
+func (journal *Journal) Commit() {
+	defer assert.Catch()
 
-	// Setup journal entries.
-	journal.Entries, err = toJournalEntries(files)
-
-	if err != nil {
-		return err
-	}
-
-	// Hold global lock until the end of this function.
-	lock, err := journal.shield.getlock()
-
-	if err != nil {
-		return err
-	}
+	lock := journal.shield.getLock()
 
 	defer lock.Close()
 
-	// Attempt to get all locks.
-	for index, entry := range journal.Entries {
-		err := entry.file.Lock()
+	journal.Status = REPLACING
+	journal.commit(true)
 
-		if err != nil {
-			for index >= 0 {
-				entry.file.Close(true)
-				entry.Status = INITIALIZING
-				index -= 1
-			}
+	// TODO: Make the actual replacement of files.
+	// Right now I'm just updating the journal.
 
-			return err
-		}
-
-		entry.Status = WRITING
-	}
-
-	// Save state of journal.
-	err = journal.save(true)
-
-	if err != nil {
-		return err
-	}
-
-	return nil
+	journal.Status = WRITING
+	journal.commit(true)
 }
 
-func (journal *Journal) Save() error {
-	// Hold global lock until the end of this function.
-	lock, err := journal.shield.getlock()
+func (journal *Journal) Close(commit bool) {
+	defer assert.Catch()
 
-	if err != nil {
-		return err
-	}
+	lock := journal.shield.getLock()
 
 	defer lock.Close()
 
-	// Update state of journal.
-	for _, entry := range journal.Entries {
-		entry.Status = REPLACING
-	}
-
-	err = journal.save(true)
-
-	if err != nil {
-		return err
+	if commit {
+		journal.Status = REPLACING
+		journal.commit(true)
 	}
 
 	// TODO: Make the actual replacement of files.
 	// Right now I'm just updating the journal.
 
-	// Update state of journal.
-	for _, entry := range journal.Entries {
-		entry.Status = WRITING
-	}
-
-	err = journal.save(true)
-
-	if err != nil {
-		return err
-	}
-
-	return nil
+	journal.Status = DELETING
+	journal.commit(false)
+	journal.remove()
 }
 
-func (journal *Journal) Close() error {
-	// Hold global lock until the end of this function.
-	lock, err := journal.shield.getlock()
+func (journal *Journal) LockFiles(files ...*File) {
+	defer assert.Catch()
 
-	if err != nil {
-		return err
-	}
+	journal.Entries = newJournalEntries(files)
+	lock := journal.shield.getLock()
 
 	defer lock.Close()
 
-	// Update state of journal.
-	for _, entry := range journal.Entries {
-		entry.Status = DELETING
+	// Attempt to get all locks.
+	for index, entry := range journal.Entries {
+		entry.file.Lock()
+
+		if assert.Err != nil {
+			for index >= 0 {
+				entry.file.Close()
+				index -= 1
+			}
+
+			return
+		}
 	}
 
-	err = journal.save(false)
-
-	if err != nil {
-		return err
-	}
-
-	// Remove journal files.
-	return journal.remove()
+	journal.Status = WRITING
+	journal.commit(true)
 }

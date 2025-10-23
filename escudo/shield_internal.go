@@ -5,27 +5,23 @@ import (
 	"path"
 	"strings"
 
+	"github.com/thiagola92/escudo/escudo/assert"
 	"github.com/thiagola92/go-lockedfile/lockedfile"
 )
 
-func (shield *Shield) anyJournal() (*Journal, error) {
+func (shield *Shield) anyJournal() *Journal {
 	var journal *Journal
-	var err error
 
 	journalspath := shield.journalspath()
 	dir, err := os.Open(journalspath)
 
-	if err != nil {
-		return nil, err
-	}
+	assert.NoError(err)
 
 	defer dir.Close()
 
 	files, err := dir.ReadDir(0)
 
-	if err != nil {
-		return nil, err
-	}
+	assert.NoError(err)
 
 	for _, file := range files {
 		if !strings.HasSuffix(file.Name(), lockext) {
@@ -33,32 +29,34 @@ func (shield *Shield) anyJournal() (*Journal, error) {
 		}
 
 		journalpath := path.Join(journalspath, file.Name())
-		journal, err = shield.openJournal(journalpath)
+		journal = shield.openJournal(journalpath)
 
-		if err == nil {
-			return journal, nil
+		if journal != nil {
+			return journal
 		}
 	}
 
-	return nil, nil
+	return nil
 }
 
-func (shield *Shield) getlock() (*lockedfile.File, error) {
-	// NOTE: It will block until get the lock.
+func (shield *Shield) getLock() *lockedfile.File {
+	// Block until get the lock.
 	lockpath := shield.lockpath()
-	return lockedfile.OpenFile(lockpath, os.O_WRONLY, 0770)
+	lockfile, err := lockedfile.OpenFile(lockpath, os.O_WRONLY, 0770)
+
+	assert.NoError(err)
+
+	return lockfile
 }
 
-func (shield *Shield) openJournal(journalpath string) (*Journal, error) {
-	var err error
-
-	journal := &Journal{path: journalpath, shield: shield}
+func (shield *Shield) openJournal(journalpath string) *Journal {
+	journal := &Journal{path: journalpath, shield: shield, Status: INITIALIZING}
 	journal.file = OpenFile(journalpath, os.O_RDWR|os.O_CREATE, 0770)
-	err = journal.file.Lock()
+	journal.file.Lock()
 
-	if err != nil {
-		return nil, err
+	if assert.Err != nil {
+		return nil
 	}
 
-	return journal, nil
+	return journal
 }

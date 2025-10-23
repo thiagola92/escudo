@@ -1,102 +1,71 @@
 package escudo
 
 import (
-	"errors"
+	"cmp"
 	"io"
 	"os"
+	"path"
 
 	"github.com/thiagola92/go-lockedfile/lockedfile"
 )
 
-func (file *File) close() error {
-	var err error
-
+func (file *File) close() (err error) {
 	if file.orig != nil {
-		err = file.orig.Close()
-
-		if err != nil {
-			return err
-		}
-
-		file.orig = nil
+		err = cmp.Or(err, file.orig.Close())
 	}
 
 	if file.temp != nil {
-		err = file.temp.Close()
-
-		if err != nil {
-			return err
-		}
-
-		file.temp = nil
-		err = os.Remove(file.temppath())
-
-		if err != nil && !errors.Is(err, os.ErrNotExist) {
-			return err
-		}
+		err = cmp.Or(
+			err,
+			file.temp.Close(),
+			os.Remove(file.temppath()),
+		)
 	}
 
 	if file.dir != nil {
-		err = file.dir.Close()
-
-		if err != nil {
-			return err
-		}
-
-		file.dir = nil
+		err = cmp.Or(err, file.dir.Close())
 	}
 
 	if file.lock != nil {
-		err = file.lock.Close()
-
-		if err != nil {
-			return err
-		}
-
-		file.lock = nil
+		err = cmp.Or(err, file.lock.Close())
 	}
 
-	return nil
+	file.orig = nil
+	file.temp = nil
+	file.dir = nil
+	file.lock = nil
+
+	return err
 }
 
-func (file *File) commit() error {
-	var err error
-
-	if file.temp == nil {
+func (file *File) commit() (err error) {
+	if file.orig == nil || file.dir == nil || file.temp == nil {
 		return nil
 	}
 
-	err = file.temp.Sync()
+	err = cmp.Or(
+		file.temp.Sync(),
+		file.dir.Sync(),
+		os.Rename(file.temppath(), file.path),
+		file.dir.Sync(),
+	)
 
-	if err != nil {
-		return err
-	}
+	file.orig.Close()
+	file.temp.Close()
 
-	err = file.dir.Sync()
+	file.orig = nil
+	file.temp = nil
 
-	if err != nil {
-		return err
-	}
-
-	err = os.Rename(file.temppath(), file.path)
-
-	if err != nil {
-		return err
-	}
-
-	err = file.dir.Sync()
-
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
-func (file *File) openLock() (bool, error) {
-	var err error
+func (file *File) openDir() (err error) {
+	file.dir, err = os.Open(path.Dir(file.path))
+	return err
+}
 
-	shared := (file.flag & (os.O_WRONLY | os.O_RDWR)) == os.O_RDONLY
+func (file *File) openLock() (shared bool, err error) {
+	shared = (file.flag & (os.O_WRONLY | os.O_RDWR)) == os.O_RDONLY
 	lockpath := file.lockpath()
 
 	if shared {
@@ -108,35 +77,12 @@ func (file *File) openLock() (bool, error) {
 	return shared, err
 }
 
-func (file *File) openOrig() error {
-	var err error
-
-	// In case we are reopening.
-	if file.orig != nil {
-		err = file.orig.Close()
-
-		if err != nil {
-			return err
-		}
-	}
-
+func (file *File) openOrig() (err error) {
 	file.orig, err = os.OpenFile(file.path, file.flag, file.perm)
-
 	return err
 }
 
-func (file *File) openTemp() error {
-	var err error
-
-	// In case we are reopening.
-	if file.temp != nil {
-		err = file.temp.Close()
-
-		if err != nil {
-			return err
-		}
-	}
-
+func (file *File) openTemp() (err error) {
 	temppath := file.temppath()
 	file.temp, err = os.OpenFile(temppath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0770)
 
@@ -146,9 +92,12 @@ func (file *File) openTemp() error {
 
 	_, err = io.Copy(file.temp, file.orig)
 
-	if err != nil {
-		return err
-	}
+	return err
+}
 
-	return nil
+func (file *File) sync() (err error) {
+	return cmp.Or(
+		file.temp.Sync(),
+		file.dir.Sync(),
+	)
 }

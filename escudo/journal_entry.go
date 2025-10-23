@@ -34,6 +34,5 @@ const (
 type JournalEntry struct {
 	file *File
 
-	Path   string
-	Status int
+	Path string
 }

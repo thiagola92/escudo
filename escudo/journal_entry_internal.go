@@ -1,11 +1,13 @@
 package escudo
 
-import "path/filepath"
+import (
+	"path/filepath"
+)
 
-func newJournalEntry(file *File) (*JournalEntry, error) {
+func newJournalEntry(file *File) (entry *JournalEntry, err error) {
 	// NOTE: We really want absolute path?
 	// This would means that the user can't move the directory...
-	entry := &JournalEntry{file: file}
+	entry.file = file
 	abspath, err := filepath.Abs(file.path)
 
 	if err != nil {
@@ -13,13 +15,12 @@ func newJournalEntry(file *File) (*JournalEntry, error) {
 	}
 
 	entry.Path = abspath
-	entry.Status = INITIALIZING
 
 	return entry, nil
 }
 
-func toJournalEntries(files []*File) ([]*JournalEntry, error) {
-	entries := make([]*JournalEntry, len(files))
+func newJournalEntries(files []*File) (entries []*JournalEntry, err error) {
+	entries = make([]*JournalEntry, len(files))
 
 	for index, file := range files {
 		entry, err := newJournalEntry(file)
