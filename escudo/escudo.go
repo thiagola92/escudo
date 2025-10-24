@@ -23,8 +23,11 @@ func Init(dirpath string) (*Shield, error) {
 		return nil, assert.Err
 	}
 
-	// TODO: complete journal
-	println(journal)
+	journal.resume()
+
+	if assert.Err != nil {
+		return nil, assert.Err
+	}
 
 	return shield, nil
 }

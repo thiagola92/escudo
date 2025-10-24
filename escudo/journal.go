@@ -28,19 +28,10 @@ func (journal *Journal) Lock(files ...*File) (err error) {
 
 	defer lock.Close()
 
-	// Attempt to get all locks.
-	for index, entry := range journal.Entries {
-		entry.file.Lock()
+	journal.lockall()
 
-		// Undo all locks in case one fail.
-		if assert.Err != nil {
-			for index >= 0 {
-				entry.file.Close()
-				index -= 1
-			}
-
-			return assert.Err
-		}
+	if assert.Err != nil {
+		return assert.Err
 	}
 
 	journal.Status = WRITING
@@ -65,12 +56,10 @@ func (journal *Journal) Commit() (err error) {
 		return assert.Err
 	}
 
-	for _, entry := range journal.Entries {
-		err = entry.file.Commit()
+	journal.commitall()
 
-		if err != nil {
-			return err
-		}
+	if assert.Err != nil {
+		return assert.Err
 	}
 
 	journal.Status = WRITING
@@ -88,21 +77,6 @@ func (journal *Journal) Close() (err error) {
 
 	defer lock.Close()
 
-	journal.Status = REPLACING
-	journal.replace()
-
-	if assert.Err != nil {
-		return assert.Err
-	}
-
-	for _, entry := range journal.Entries {
-		err = entry.file.Commit()
-
-		if err != nil {
-			return err
-		}
-	}
-
 	journal.Status = DELETING
 	journal.replace()
 
@@ -110,12 +84,10 @@ func (journal *Journal) Close() (err error) {
 		return assert.Err
 	}
 
-	for _, entry := range journal.Entries {
-		err = entry.file.Close()
+	journal.closeall()
 
-		if err != nil {
-			return err
-		}
+	if assert.Err != nil {
+		return assert.Err
 	}
 
 	journal.close()
