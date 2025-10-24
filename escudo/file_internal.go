@@ -89,7 +89,6 @@ func (file *File) modified() bool {
 	diff := bytes.Compare(orig_hash.Sum(nil), temp_hash.Sum(nil))
 
 	return diff != 0
-
 }
 
 func (file *File) replace() {
@@ -127,7 +126,8 @@ func (file *File) close() {
 
 	if file.lock != nil {
 		// Note: Anyone can get the lock between closing and removing,
-		// but doing through journal we have the global lock to prevent this.
+		// so my recomendation is doing through journal
+		// where we have the global lock to prevent this.
 		assert.Closed(file.lock.Close())
 		assert.FileNotExist(os.Remove(file.lockpath()))
 	}

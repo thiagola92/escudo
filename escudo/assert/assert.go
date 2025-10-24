@@ -43,6 +43,14 @@ func Closed(err error) {
 	}
 }
 
+func FileExist(err error) {
+	Err = nil
+
+	if err != nil && !errors.Is(err, os.ErrExist) {
+		panic(err)
+	}
+}
+
 func FileNotExist(err error) {
 	Err = nil
 

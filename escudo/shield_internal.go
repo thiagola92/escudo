@@ -9,14 +9,19 @@ import (
 	"github.com/thiagola92/go-lockedfile/lockedfile"
 )
 
-func (shield *Shield) waitLock() *lockedfile.File {
-	lockpath := shield.lockpath()
-	lockfile, err := lockedfile.OpenFile(lockpath, os.O_WRONLY, 0770)
+func newShield(shieldpath string) (shield *Shield) {
+	shield = &Shield{path: shieldpath}
 
 	defer assert.Catch()
-	assert.NoErr(err)
+	assert.FileExist(os.Mkdir(shield.path, 0770))
 
-	return lockfile
+	file, err := os.OpenFile(shield.lockpath(), os.O_RDONLY|os.O_CREATE, 0770)
+
+	assert.NoErr(err)
+	assert.Closed(file.Close())
+	assert.FileExist(os.Mkdir(shield.journalspath(), 0770))
+
+	return shield
 }
 
 func (shield *Shield) openJournal(journalpath string) *Journal {
@@ -59,4 +64,14 @@ func (shield *Shield) anyJournal() *Journal {
 	}
 
 	return nil
+}
+
+func (shield *Shield) waitLock() *lockedfile.File {
+	lockpath := shield.lockpath()
+	lockfile, err := lockedfile.OpenFile(lockpath, os.O_WRONLY, 0770)
+
+	defer assert.Catch()
+	assert.NoErr(err)
+
+	return lockfile
 }

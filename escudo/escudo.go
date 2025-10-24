@@ -1,9 +1,9 @@
 package escudo
 
 import (
-	"errors"
-	"os"
 	"path"
+
+	"github.com/thiagola92/escudo/escudo/assert"
 )
 
 var lockext = ".escl"
@@ -11,45 +11,20 @@ var tempext = ".esct"
 var jourext = ".escj"
 
 func Init(dirpath string) (*Shield, error) {
-	var err error
+	shield := newShield(path.Join(dirpath, ".escudo"))
 
-	shield := &Shield{
-		path: path.Join(dirpath, ".escudo"),
+	if assert.Err != nil {
+		return nil, assert.Err
 	}
 
-	// Setup directories and files.
-	err = os.Mkdir(shield.path, 0770)
+	journal := shield.anyJournal()
 
-	if err != nil && !errors.Is(err, os.ErrExist) {
-		return nil, err
+	if assert.Err != nil {
+		return nil, assert.Err
 	}
 
-	file, err := os.OpenFile(shield.lockpath(), os.O_RDONLY|os.O_CREATE, 0770)
-
-	if err != nil {
-		return nil, err
-	}
-
-	err = file.Close()
-
-	if err != nil {
-		return nil, err
-	}
-
-	err = os.Mkdir(shield.journalspath(), 0770)
-
-	if err != nil && !errors.Is(err, os.ErrExist) {
-		return nil, err
-	}
-
-	// Check for incomplete journals and complete them.
-	// journal, err := shield.anyJournal()
-
-	// if err != nil {
-	// 	return nil, err
-	// }
-
-	// println(journal.path)
+	// TODO: complete journal
+	println(journal)
 
 	return shield, nil
 }
