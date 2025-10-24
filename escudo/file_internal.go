@@ -1,6 +1,8 @@
 package escudo
 
 import (
+	"bytes"
+	"crypto/sha256"
 	"io"
 	"os"
 	"path"
@@ -49,11 +51,45 @@ func (file *File) openTemp() {
 	var err error
 
 	temppath := file.temppath()
-	file.temp, err = os.OpenFile(temppath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0770)
+	file.temp, err = os.OpenFile(temppath, os.O_RDWR|os.O_CREATE, 0770)
 
 	defer assert.Catch()
 	assert.NoErr(err)
-	assert.NoErrOn2(io.Copy(file.temp, file.orig))
+
+	info, err := file.temp.Stat()
+
+	assert.NoErr(err)
+
+	// To avoid damaging if has content.
+	if info.Size() == 0 {
+		assert.NoErrOn2(io.Copy(file.temp, file.orig))
+	}
+}
+
+func (file *File) modified() bool {
+	orig_current, err1 := file.orig.Seek(0, io.SeekCurrent)
+	temp_current, err2 := file.temp.Seek(0, io.SeekCurrent)
+
+	// Order matters.
+	defer assert.Catch()
+	assert.NoErr(err1)
+	defer file.orig.Seek(orig_current, io.SeekStart)
+	assert.NoErr(err2)
+	defer file.temp.Seek(temp_current, io.SeekStart)
+
+	assert.NoErrOn2(file.orig.Seek(0, io.SeekStart))
+	assert.NoErrOn2(file.temp.Seek(0, io.SeekStart))
+
+	orig_hash := sha256.New()
+	temp_hash := sha256.New()
+
+	assert.NoErrOn2(io.Copy(orig_hash, file.orig))
+	assert.NoErrOn2(io.Copy(temp_hash, file.temp))
+
+	diff := bytes.Compare(orig_hash.Sum(nil), temp_hash.Sum(nil))
+
+	return diff != 0
+
 }
 
 func (file *File) replace() {
@@ -90,9 +126,10 @@ func (file *File) close() {
 	}
 
 	if file.lock != nil {
+		// Note: Anyone can get the lock between closing and removing,
+		// but doing through journal we have the global lock to prevent this.
 		assert.Closed(file.lock.Close())
-		// We don't delete lock HERE because we don't know
-		// if someone may obtain it before we delete it.
+		assert.FileNotExist(os.Remove(file.lockpath()))
 	}
 
 	file.orig = nil

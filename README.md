@@ -21,17 +21,17 @@ File
 │   └── Obtain permission to interact with file
 ├── Commit()
 │   └── Commit changes to file
-└── Push()
-    └── Commit changes to file, then close it
+└── Close()
+    └── Delete temporary file
 Journal
 ├── Lock()
 │   └── Obtain permission to interact with multiple files
 ├── Commit()
 │   └── Commit changes to files and journal
-└── Push()
-    └── Commit changes to files and journal, then close them
+└── Close()
+    └── Delete temporary files and journal 
 ```
 
-> If I want to abort changing the file?
+> How do I abort changes to file?
 
-Just close it. If you don't commit or push changes, nothing will happen.
+Changes are only made if you commit. If you want to abort, just close the file.

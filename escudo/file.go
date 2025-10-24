@@ -20,7 +20,7 @@ type File struct {
 }
 
 // Setup file to be open in the future.
-func OpenFile(filepath string, flag int, perm fs.FileMode) *File {
+func NewFile(filepath string, flag int, perm fs.FileMode) *File {
 	file := &File{path: filepath}
 
 	// Replace WRONLY with RDWR, otherwise we can't create
@@ -83,14 +83,8 @@ func (file *File) Commit() error {
 	return assert.Err
 }
 
-// Commit changes to file and close it.
-func (file *File) Push() (err error) {
-	file.replace()
-
-	if assert.Err != nil {
-		return assert.Err
-	}
-
+// Delete temporary file and lock
+func (file *File) Close() error {
 	file.close()
 
 	return assert.Err
@@ -99,12 +93,6 @@ func (file *File) Push() (err error) {
 ///////////////////////////////////////////////////////////
 //////////////////////// Wrappers
 ///////////////////////////////////////////////////////////
-
-func (file *File) Close() error {
-	file.close()
-
-	return assert.Err
-}
 
 func (file *File) Seek(offset int64, whence int) (ret int64, err error) {
 	if file.temp == nil {

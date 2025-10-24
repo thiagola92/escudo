@@ -1,6 +1,8 @@
 package escudo
 
-import "github.com/thiagola92/escudo/escudo/assert"
+import (
+	"github.com/thiagola92/escudo/escudo/assert"
+)
 
 type Journal struct {
 	path   string
@@ -47,7 +49,7 @@ func (journal *Journal) Lock(files ...*File) (err error) {
 	return assert.Err
 }
 
-func (journal *Journal) Commit() error {
+func (journal *Journal) Commit() (err error) {
 	lock := journal.shield.waitLock()
 
 	if assert.Err != nil {
@@ -63,8 +65,13 @@ func (journal *Journal) Commit() error {
 		return assert.Err
 	}
 
-	// TODO: Make the actual replacement of files.
-	// Right now I'm just updating the journal.
+	for _, entry := range journal.Entries {
+		err = entry.file.Commit()
+
+		if err != nil {
+			return err
+		}
+	}
 
 	journal.Status = WRITING
 	journal.replace()
@@ -72,7 +79,7 @@ func (journal *Journal) Commit() error {
 	return assert.Err
 }
 
-func (journal *Journal) Push() error {
+func (journal *Journal) Close() (err error) {
 	lock := journal.shield.waitLock()
 
 	if assert.Err != nil {
@@ -88,14 +95,27 @@ func (journal *Journal) Push() error {
 		return assert.Err
 	}
 
-	// TODO: Make the actual replacement of files.
-	// Right now I'm just updating the journal.
+	for _, entry := range journal.Entries {
+		err = entry.file.Commit()
+
+		if err != nil {
+			return err
+		}
+	}
 
 	journal.Status = DELETING
 	journal.replace()
 
 	if assert.Err != nil {
 		return assert.Err
+	}
+
+	for _, entry := range journal.Entries {
+		err = entry.file.Close()
+
+		if err != nil {
+			return err
+		}
 	}
 
 	journal.close()

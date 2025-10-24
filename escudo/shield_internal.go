@@ -21,7 +21,7 @@ func (shield *Shield) waitLock() *lockedfile.File {
 
 func (shield *Shield) openJournal(journalpath string) *Journal {
 	journal := &Journal{path: journalpath, shield: shield, Status: INITIALIZING}
-	journal.file = OpenFile(journalpath, os.O_RDWR|os.O_CREATE, 0770)
+	journal.file = NewFile(journalpath, os.O_RDWR|os.O_CREATE, 0770)
 	journal.file.Lock()
 
 	defer assert.Catch()

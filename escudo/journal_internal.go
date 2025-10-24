@@ -22,12 +22,6 @@ func (journal *Journal) replace() {
 
 func (journal *Journal) close() {
 	defer assert.Catch()
-	assert.FileNotExist(os.Remove(journal.file.lockpath()))
-	assert.FileNotExist(os.Remove(journal.file.temppath()))
+	assert.NoErr(journal.file.Close())
 	assert.FileNotExist(os.Remove(journal.file.path))
-
-	for _, entry := range journal.Entries {
-		assert.NoErr(entry.file.Close())
-		assert.FileNotExist(os.Remove(entry.file.lockpath()))
-	}
 }
