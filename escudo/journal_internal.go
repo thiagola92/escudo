@@ -68,5 +68,7 @@ func (journal *Journal) resume() {
 		assert.NoErr(journal.Commit())
 	case DELETING:
 		assert.NoErr(journal.Close())
+	default:
+		return
 	}
 }

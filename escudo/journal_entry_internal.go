@@ -11,7 +11,7 @@ func newJournalEntry(file *File) (entry *JournalEntry) {
 
 	// NOTE: We really want absolute path?
 	// This would means that the user can't move the directory...
-	entry.file = file
+	entry = &JournalEntry{file: file}
 	entry.Path, err = filepath.Abs(file.path)
 
 	defer assert.Catch()
