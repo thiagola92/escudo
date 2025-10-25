@@ -29,9 +29,12 @@ Journal
 ├── Commit()
 │   └── Commit changes to files and journal
 └── Close()
-    └── Delete temporary files and journal 
+    └── Delete temporary files and journal
+Shield
+└── GetJournal()
+    └── Get journal of the current process
 ```
 
-> How do I abort changes to file?
+> How do I abort changes to file/journal?
 
-Changes are only made if you commit. If you want to abort, just close the file.
+Changes are only made if you commit. If you want to abort, just close the file/journal.

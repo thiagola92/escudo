@@ -83,7 +83,7 @@ func (file *File) Commit() error {
 	return assert.Err
 }
 
-// Delete temporary file and lock
+// Delete temporary file and lock.
 func (file *File) Close() error {
 	file.close()
 

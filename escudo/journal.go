@@ -13,6 +13,7 @@ type Journal struct {
 	Status  int
 }
 
+// Obtain permission to interact with multiple files.
 func (journal *Journal) Lock(files ...*File) (err error) {
 	journal.Entries = newJournalEntries(files)
 
@@ -40,6 +41,7 @@ func (journal *Journal) Lock(files ...*File) (err error) {
 	return assert.Err
 }
 
+// Commit changes to files and journal.
 func (journal *Journal) Commit() (err error) {
 	lock := journal.shield.waitLock()
 
@@ -68,6 +70,7 @@ func (journal *Journal) Commit() (err error) {
 	return assert.Err
 }
 
+// Delete temporary files and journal.
 func (journal *Journal) Close() (err error) {
 	lock := journal.shield.waitLock()
 

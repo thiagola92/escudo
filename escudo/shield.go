@@ -10,7 +10,7 @@ type Shield struct {
 	path string
 }
 
-// Get the journal of the current process.
+// Get journal of the current process.
 func (shield *Shield) GetJournal() (journal *Journal, err error) {
 	journalpath := shield.journalpath(os.Getpid())
 	journal = shield.openJournal(journalpath)

@@ -24,6 +24,8 @@ func main() {
 		log.Fatal(err.Error())
 	}
 
+	defer journal.Close()
+
 	err = journal.Lock(file, file2)
 
 	if err != nil {
