@@ -73,11 +73,13 @@ func TestFileSharedLock(t *testing.T) {
 }
 
 func TestFileWriteString(t *testing.T) {
+	// Setup.
 	file := NewFile(test_filename, os.O_RDWR|os.O_CREATE, 0770)
 
 	defer file.Close()
 	assert_t.NoErr(t, file.Lock())
 
+	// Test.
 	written, err := file.WriteString(test_str0)
 
 	if written != len(test_str0) {
@@ -88,7 +90,7 @@ func TestFileWriteString(t *testing.T) {
 		t.Errorf("Failed to write bytes: %s", err.Error())
 	}
 
-	// Check if temporary file changed because no commit was made to change the main file.
+	// Check if temporary file changed because no commit was made to change the original file.
 	str, err := os.ReadFile(file.temp.Name())
 
 	assert_t.NoErr(t, err)
@@ -98,50 +100,32 @@ func TestFileWriteString(t *testing.T) {
 	}
 }
 
-// func TestFileCommit(t *testing.T) {
-// 	assert_t.NoErr(t, os.WriteFile(test_filename, []byte("START"), 0770))
+func TestFileCommit(t *testing.T) {
+	// Setup.
+	assert_t.NoErr(t, os.WriteFile(test_filename, []byte(test_str0), 0770))
 
-// 	file := NewFile(test_filename, os.O_RDWR|os.O_CREATE, 0770)
+	file := NewFile(test_filename, os.O_RDWR|os.O_CREATE, 0770)
 
-// 	defer file.Close()
-// 	assert_t.NoErr(t, file.Lock())
+	defer file.Close()
+	assert_t.NoErr(t, file.Lock())
 
-// 	_, err := file.WriteString("END")
-// 	assert_t.NoErr(t, err)
+	_, err := file.WriteString(test_str1)
 
-// 	// str := make([]byte, 256)
-// 	// written, err = file.Read(str)
+	assert_t.NoErr(t, err)
 
-// 	// if written == 0 {
-// 	// 	t.Error("Failed to read bytes")
-// 	// }
+	// Test.
+	err = file.Commit()
 
-// 	// if err != nil {
-// 	// 	t.Errorf("Failed to read bytes: %s", err.Error())
-// 	// }
+	if err != nil {
+		t.Errorf("Failed to commit changes: %s", err.Error())
+	}
 
-// 	// if string(str) == "END" {
-// 	// 	t.Errorf("Should have changed file")
-// 	// }
+	// Check if original file changed.
+	str, err := os.ReadFile(file.orig.Name())
 
-// 	// err = file.Commit()
+	assert_t.NoErr(t, err)
 
-// 	// if err != nil {
-// 	// 	t.Errorf("Failed to commit: %s", err.Error())
-// 	// }
-
-// 	// str = make([]byte, 256)
-// 	// written, err = file.Read(str)
-
-// 	// if written == 0 {
-// 	// 	t.Error("Failed to read bytes")
-// 	// }
-
-// 	// if err != nil {
-// 	// 	t.Errorf("Failed to read bytes: %s", err.Error())
-// 	// }
-
-// 	// if string(str) == "END" {
-// 	// 	t.Errorf("Should have changed file")
-// 	// }
-// }
+	if strings.Compare(string(str), test_str1) != 0 {
+		t.Errorf("Temporary not holding the expected content")
+	}
+}
