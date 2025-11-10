@@ -13,39 +13,41 @@ const test_str0 = "STRING 0"
 const test_str1 = "STRING 1"
 
 func TestFileFlag(t *testing.T) {
+	// Setup.
 	file := NewFile(test_filename, os.O_RDONLY, 0770)
+	file2 := NewFile(test_filename, os.O_WRONLY, 0770)
+	file3 := NewFile(test_filename, os.O_RDWR, 0770)
 
+	// Test.
 	if (file.flag & os.O_RDONLY) != os.O_RDONLY {
 		t.Errorf("Flag should be os.O_RDONLY, instead is: %d", file.flag)
 	}
 
-	file = NewFile(test_filename, os.O_WRONLY, 0770)
-
-	if (file.flag & os.O_RDWR) != os.O_RDWR {
-		t.Errorf("Flag should have changed to os.O_RDWR, but is: %d", file.flag)
+	if (file2.flag & os.O_RDWR) != os.O_RDWR {
+		t.Errorf("Flag should have changed to os.O_RDWR, but is: %d", file2.flag)
 	}
 
-	file = NewFile(test_filename, os.O_RDWR, 0770)
-
-	if (file.flag & os.O_RDWR) != os.O_RDWR {
-		t.Errorf("Flag should be os.O_RDWR, but is: %d", file.flag)
+	if (file3.flag & os.O_RDWR) != os.O_RDWR {
+		t.Errorf("Flag should be os.O_RDWR, but is: %d", file3.flag)
 	}
 }
 
 func TestFileExclusiveLock(t *testing.T) {
+	// Setup.
 	file := NewFile(test_filename, os.O_RDWR|os.O_CREATE, 0770)
-	err := file.Lock()
+	file2 := NewFile(test_filename, os.O_RDWR, 0770)
 
 	defer file.Close()
+	defer file2.Close()
+
+	// Test.
+	err := file.Lock()
 
 	if err != nil {
 		t.Errorf("Failed to lock file: %s", err.Error())
 	}
 
-	file2 := NewFile(test_filename, os.O_RDWR, 0770)
 	err = file2.Lock()
-
-	defer file2.Close()
 
 	if err == nil {
 		t.Errorf("Should have failed to obtain an already locked file")
@@ -53,19 +55,21 @@ func TestFileExclusiveLock(t *testing.T) {
 }
 
 func TestFileSharedLock(t *testing.T) {
+	// Setup.
 	file := NewFile(test_filename, os.O_RDONLY|os.O_CREATE, 0770)
-	err := file.Lock()
+	file2 := NewFile(test_filename, os.O_RDONLY, 0770)
 
 	defer file.Close()
+	defer file2.Close()
+
+	// Test.
+	err := file.Lock()
 
 	if err != nil {
 		t.Errorf("Failed to lock file: %s", err.Error())
 	}
 
-	file2 := NewFile(test_filename, os.O_RDONLY, 0770)
 	err = file2.Lock()
-
-	defer file2.Close()
 
 	if err != nil {
 		t.Errorf("Should have obtain locked file because is a shared lock")
@@ -90,13 +94,12 @@ func TestFileWriteString(t *testing.T) {
 		t.Errorf("Failed to write bytes: %s", err.Error())
 	}
 
-	// Check if temporary file changed because no commit was made to change the original file.
-	str, err := os.ReadFile(file.temp.Name())
+	str, err := os.ReadFile(file.temp.Name()) // Read temporary file.
 
 	assert_t.NoErr(t, err)
 
 	if strings.Compare(string(str), test_str0) != 0 {
-		t.Errorf("Temporary not holding the expected content")
+		t.Errorf("Temporary file is not holding the expected content")
 	}
 }
 
@@ -120,12 +123,11 @@ func TestFileCommit(t *testing.T) {
 		t.Errorf("Failed to commit changes: %s", err.Error())
 	}
 
-	// Check if original file changed.
-	str, err := os.ReadFile(file.orig.Name())
+	str, err := os.ReadFile(file.orig.Name()) // Read original file.
 
 	assert_t.NoErr(t, err)
 
 	if strings.Compare(string(str), test_str1) != 0 {
-		t.Errorf("Temporary not holding the expected content")
+		t.Errorf("Orignal file is not holding the expected content")
 	}
 }
