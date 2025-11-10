@@ -10,14 +10,14 @@ import (
 func main() {
 	println("Init")
 
-	shield, err := escudo.Init("../example")
+	shield, err := escudo.Init("../test")
 
 	if err != nil {
 		log.Fatal(err.Error())
 	}
 
-	file := escudo.NewFile("../example/myfile.txt", os.O_RDONLY, 0777)
-	file2 := escudo.NewFile("../example/other.txt", os.O_RDWR, 0777)
+	file := escudo.NewFile("../test/myfile.txt", os.O_RDONLY, 0777)
+	file2 := escudo.NewFile("../test/other.txt", os.O_RDWR, 0777)
 	journal, err := shield.GetJournal()
 
 	if err != nil {

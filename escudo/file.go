@@ -94,6 +94,14 @@ func (file *File) Close() error {
 //////////////////////// Wrappers
 ///////////////////////////////////////////////////////////
 
+func (file *File) Read(b []byte) (n int, err error) {
+	if file.temp == nil {
+		return file.orig.Read(b)
+	}
+
+	return file.temp.Read(b)
+}
+
 func (file *File) Seek(offset int64, whence int) (ret int64, err error) {
 	if file.temp == nil {
 		return file.orig.Seek(offset, whence)

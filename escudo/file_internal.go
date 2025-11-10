@@ -63,6 +63,7 @@ func (file *File) openTemp() {
 	// To avoid damaging if has content.
 	if info.Size() == 0 {
 		assert.NoErrOn2(io.Copy(file.temp, file.orig))
+		assert.NoErrOn2(file.temp.Seek(0, 0))
 	}
 }
 
