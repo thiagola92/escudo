@@ -1,6 +1,7 @@
 package escudo
 
 import (
+	"errors"
 	"os"
 	"strings"
 	"testing"
@@ -129,5 +130,33 @@ func TestFileCommit(t *testing.T) {
 
 	if strings.Compare(string(str), test_str1) != 0 {
 		t.Errorf("Orignal file is not holding the expected content")
+	}
+}
+
+func TestFileClose(t *testing.T) {
+	// Setup.
+	file := NewFile(test_filename, os.O_RDWR|os.O_CREATE, 0770)
+
+	assert_t.NoErr(t, file.Lock())
+
+	// Test.
+	tempfile := file.temp.Name()
+	lockfile := file.lock.Name()
+	err := file.Close()
+
+	if err != nil {
+		t.Errorf("Failed to close file: %s", err.Error())
+	}
+
+	_, err = os.Stat(tempfile)
+
+	if err == nil || !errors.Is(err, os.ErrNotExist) {
+		t.Errorf("Should have removed the temporary file")
+	}
+
+	_, err = os.Stat(lockfile)
+
+	if err == nil || !errors.Is(err, os.ErrNotExist) {
+		t.Errorf("Should have removed the lock file")
 	}
 }

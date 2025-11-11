@@ -13,6 +13,13 @@ func NoErr(t *testing.T, err error) {
 	}
 }
 
+// Was not able to convert.
+// func NoErrOn2(t *testing.T, a any, err error) {
+// 	if err != nil {
+// 		panic(err)
+// 	}
+// }
+
 func Closed(t *testing.T, err error) {
 	if err != nil && !errors.Is(err, os.ErrClosed) {
 		t.Error(err.Error())
