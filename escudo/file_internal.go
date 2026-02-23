@@ -11,8 +11,8 @@ import (
 	"github.com/thiagola92/go-lockedfile/lockedfile"
 )
 
-func (file *File) openLock() (shared bool) {
-	var err error
+func (file *File) openLock() (shared bool, err error) {
+	defer assert.Catch(&err)
 
 	shared = (file.flag & (os.O_WRONLY | os.O_RDWR)) == os.O_RDONLY
 	lockpath := file.lockpath()
@@ -23,37 +23,37 @@ func (file *File) openLock() (shared bool) {
 		file.lock, err = lockedfile.TryOpenFile(lockpath, os.O_RDWR|os.O_CREATE, 0770)
 	}
 
-	defer assert.Catch()
 	assert.NoErr(err)
 
-	return shared
+	return shared, err
 }
 
-func (file *File) openOrig() {
-	var err error
+func (file *File) openOrig() (err error) {
+	defer assert.Catch(&err)
 
 	file.orig, err = os.OpenFile(file.path, file.flag, file.perm)
 
-	defer assert.Catch()
 	assert.NoErr(err)
+
+	return nil
 }
 
-func (file *File) openDir() {
-	var err error
+func (file *File) openDir() (err error) {
+	defer assert.Catch(&err)
 
 	file.dir, err = os.Open(path.Dir(file.path))
 
-	defer assert.Catch()
 	assert.NoErr(err)
+
+	return nil
 }
 
-func (file *File) openTemp() {
-	var err error
+func (file *File) openTemp() (err error) {
+	defer assert.Catch(&err)
 
 	temppath := file.temppath()
 	file.temp, err = os.OpenFile(temppath, os.O_RDWR|os.O_CREATE, 0770)
 
-	defer assert.Catch()
 	assert.NoErr(err)
 
 	info, err := file.temp.Stat()
@@ -65,14 +65,17 @@ func (file *File) openTemp() {
 		assert.NoErrOn2(io.Copy(file.temp, file.orig))
 		assert.NoErrOn2(file.temp.Seek(0, 0))
 	}
+
+	return nil
 }
 
-func (file *File) modified() bool {
+func (file *File) modified() (modified bool, err error) {
+	defer assert.Catch(&err)
+
 	orig_current, err1 := file.orig.Seek(0, io.SeekCurrent)
 	temp_current, err2 := file.temp.Seek(0, io.SeekCurrent)
 
 	// Order matters.
-	defer assert.Catch()
 	assert.NoErr(err1)
 	defer file.orig.Seek(orig_current, io.SeekStart)
 	assert.NoErr(err2)
@@ -89,15 +92,16 @@ func (file *File) modified() bool {
 
 	diff := bytes.Compare(orig_hash.Sum(nil), temp_hash.Sum(nil))
 
-	return diff != 0
+	return diff != 0, nil
 }
 
-func (file *File) replace() {
+func (file *File) replace() (err error) {
+	defer assert.Catch(&err)
+
 	if file.orig == nil || file.dir == nil || file.temp == nil {
 		return
 	}
 
-	defer assert.Catch()
 	assert.NoErr(file.temp.Sync())
 	assert.NoErr(file.dir.Sync())
 	assert.Closed(file.orig.Close())
@@ -107,10 +111,12 @@ func (file *File) replace() {
 
 	file.orig = nil
 	file.temp = nil
+
+	return nil
 }
 
-func (file *File) close() {
-	defer assert.Catch()
+func (file *File) close() (err error) {
+	defer assert.Catch(&err)
 
 	if file.orig != nil {
 		assert.Closed(file.orig.Close())
@@ -137,4 +143,6 @@ func (file *File) close() {
 	file.temp = nil
 	file.dir = nil
 	file.lock = nil
+
+	return nil
 }

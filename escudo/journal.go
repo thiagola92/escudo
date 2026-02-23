@@ -48,85 +48,89 @@ type Journal struct {
 
 // Obtain permission to interact with multiple files.
 func (journal *Journal) Lock(files ...*File) (err error) {
-	journal.Entries = newJournalEntries(files)
+	assert.Catch(&err)
 
-	if assert.Err != nil {
-		return assert.Err
+	journal.Entries, err = newJournalEntries(files)
+
+	if err != nil {
+		return err
 	}
 
-	lock := journal.shield.waitLock()
+	lock, err := journal.shield.waitLock()
 
-	if assert.Err != nil {
-		return assert.Err
+	if err != nil {
+		return err
 	}
 
 	defer lock.Close()
 
-	journal.lockall()
+	err = journal.lockall()
 
-	if assert.Err != nil {
-		return assert.Err
+	if err != nil {
+		return err
 	}
 
 	journal.Status = WRITING
-	journal.replace()
+	err = journal.replace()
 
-	return assert.Err
+	return err
 }
 
 // Commit changes to files and journal.
 func (journal *Journal) Commit() (err error) {
-	lock := journal.shield.waitLock()
+	assert.Catch(&err)
 
-	if assert.Err != nil {
-		return assert.Err
+	lock, err := journal.shield.waitLock()
+
+	if err != nil {
+		return err
 	}
 
 	defer lock.Close()
 
 	journal.Status = REPLACING
-	journal.replace()
+	err = journal.replace()
 
-	if assert.Err != nil {
-		return assert.Err
+	if err != nil {
+		return err
 	}
 
-	journal.commitall()
+	err = journal.commitall()
 
-	if assert.Err != nil {
-		return assert.Err
+	if err != nil {
+		return err
 	}
 
 	journal.Status = WRITING
-	journal.replace()
+	err = journal.replace()
 
-	return assert.Err
+	return err
 }
 
 // Delete temporary files and journal.
 func (journal *Journal) Close() (err error) {
-	lock := journal.shield.waitLock()
+	lock, err := journal.shield.waitLock()
 
-	if assert.Err != nil {
-		return assert.Err
+	if err != nil {
+		return err
 	}
 
 	defer lock.Close()
 
 	journal.Status = DELETING
-	journal.replace()
+	err = journal.replace()
 
-	if assert.Err != nil {
-		return assert.Err
+	if err != nil {
+		return err
 	}
 
-	journal.closeall()
+	err = journal.closeall()
 
-	if assert.Err != nil {
-		return assert.Err
+	if err != nil {
+		return err
 	}
 
-	journal.close()
+	err = journal.close()
 
-	return assert.Err
+	return err
 }

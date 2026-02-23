@@ -9,10 +9,11 @@ import (
 	"github.com/thiagola92/go-lockedfile/lockedfile"
 )
 
-func newShield(shieldpath string) (shield *Shield) {
+func newShield(shieldpath string) (shield *Shield, err error) {
+	defer assert.Catch(&err)
+
 	shield = &Shield{path: shieldpath}
 
-	defer assert.Catch()
 	assert.FileExist(os.Mkdir(shield.path, 0770))
 
 	file, err := os.OpenFile(shield.lockpath(), os.O_RDONLY|os.O_CREATE, 0770)
@@ -21,27 +22,27 @@ func newShield(shieldpath string) (shield *Shield) {
 	assert.Closed(file.Close())
 	assert.FileExist(os.Mkdir(shield.journalspath(), 0770))
 
-	return shield
+	return shield, nil
 }
 
-func (shield *Shield) openJournal(journalpath string) *Journal {
-	journal := &Journal{path: journalpath, shield: shield, Status: INITIALIZING}
+func (shield *Shield) openJournal(journalpath string) (journal *Journal, err error) {
+	defer assert.Catch(&err)
+
+	journal = &Journal{path: journalpath, shield: shield, Status: INITIALIZING}
 	journal.file = NewFile(journalpath, os.O_RDWR|os.O_CREATE, 0770)
-	journal.file.Lock()
+	err = journal.file.Lock()
 
-	defer assert.Catch()
-	assert.NoErr(assert.Err)
+	assert.NoErr(err)
 
-	return journal
+	return journal, nil
 }
 
-func (shield *Shield) anyJournal() *Journal {
-	var journal *Journal
+func (shield *Shield) anyJournal() (journal *Journal, err error) {
+	defer assert.Catch(&err)
 
 	journalspath := shield.journalspath()
 	dir, err := os.Open(journalspath)
 
-	defer assert.Catch()
 	assert.NoErr(err)
 
 	defer dir.Close()
@@ -56,22 +57,23 @@ func (shield *Shield) anyJournal() *Journal {
 		}
 
 		journalpath := path.Join(journalspath, file.Name())
-		journal = shield.openJournal(journalpath)
+		journal, err = shield.openJournal(journalpath)
 
 		if journal != nil {
-			return journal
+			return journal, nil
 		}
 	}
 
-	return nil
+	return nil, nil
 }
 
-func (shield *Shield) waitLock() *lockedfile.File {
-	lockpath := shield.lockpath()
-	lockfile, err := lockedfile.OpenFile(lockpath, os.O_WRONLY, 0770)
+func (shield *Shield) waitLock() (lockfile *lockedfile.File, err error) {
+	defer assert.Catch(&err)
 
-	defer assert.Catch()
+	lockpath := shield.lockpath()
+	lockfile, err = lockedfile.OpenFile(lockpath, os.O_WRONLY, 0770)
+
 	assert.NoErr(err)
 
-	return lockfile
+	return lockfile, nil
 }

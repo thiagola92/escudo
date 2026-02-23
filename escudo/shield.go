@@ -2,8 +2,6 @@ package escudo
 
 import (
 	"os"
-
-	"github.com/thiagola92/escudo/escudo/assert"
 )
 
 type Shield struct {
@@ -13,10 +11,10 @@ type Shield struct {
 // Get journal of the current process.
 func (shield *Shield) GetJournal() (journal *Journal, err error) {
 	journalpath := shield.journalpath(os.Getpid())
-	journal = shield.openJournal(journalpath)
+	journal, err = shield.openJournal(journalpath)
 
-	if assert.Err != nil {
-		return nil, assert.Err
+	if err != nil {
+		return nil, err
 	}
 
 	return journal, nil

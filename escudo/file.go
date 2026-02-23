@@ -4,7 +4,6 @@ import (
 	"io/fs"
 	"os"
 
-	"github.com/thiagola92/escudo/escudo/assert"
 	"github.com/thiagola92/go-lockedfile/lockedfile"
 )
 
@@ -20,8 +19,8 @@ type File struct {
 }
 
 // Setup file to be open in the future.
-func NewFile(filepath string, flag int, perm fs.FileMode) *File {
-	file := &File{path: filepath}
+func NewFile(filepath string, flag int, perm fs.FileMode) (file *File) {
+	file = &File{path: filepath}
 
 	// Replace WRONLY with RDWR, otherwise we can't create
 	// the temporary file with the same content as the original.
@@ -38,56 +37,56 @@ func NewFile(filepath string, flag int, perm fs.FileMode) *File {
 
 // Obtain permission to interact with file.
 func (file *File) Lock() (err error) {
-	shared := file.openLock()
+	shared, err := file.openLock()
 
-	if assert.Err != nil {
-		return assert.Err
+	if err != nil {
+		return err
 	}
 
-	file.openOrig()
+	err = file.openOrig()
 
-	if assert.Err != nil {
-		return assert.Err
+	if err != nil {
+		return err
 	}
 
-	file.openDir()
+	err = file.openDir()
 
-	if assert.Err != nil {
-		return assert.Err
+	if err != nil {
+		return err
 	}
 
 	// Only need temporary file if is an exclusive lock.
 	if !shared {
-		file.openTemp()
+		err = file.openTemp()
 	}
 
-	return assert.Err
+	return err
 }
 
 // Commit changes to file.
-func (file *File) Commit() error {
-	file.replace()
+func (file *File) Commit() (err error) {
+	err = file.replace()
 
-	if assert.Err != nil {
-		return assert.Err
+	if err != nil {
+		return err
 	}
 
-	file.openOrig()
+	err = file.openOrig()
 
-	if assert.Err != nil {
-		return assert.Err
+	if err != nil {
+		return err
 	}
 
-	file.openTemp()
+	err = file.openTemp()
 
-	return assert.Err
+	return err
 }
 
 // Delete temporary file and lock.
-func (file *File) Close() error {
-	file.close()
+func (file *File) Close() (err error) {
+	err = file.close()
 
-	return assert.Err
+	return err
 }
 
 ///////////////////////////////////////////////////////////

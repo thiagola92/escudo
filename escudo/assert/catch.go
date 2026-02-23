@@ -1,9 +1,7 @@
 package assert
 
-var Err error
-
-func Catch() {
+func Catch(err *error) {
 	if r := recover(); r != nil {
-		Err = r.(error)
+		*err = r.(error)
 	}
 }
